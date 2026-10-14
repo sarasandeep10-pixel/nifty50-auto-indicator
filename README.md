@@ -40,3 +40,20 @@ Open **Actions** in the repository, select **Daily NSE Data Status Check**, open
 - Sweep markers indicate a prior confirmed swing level was crossed and the candle closed back inside.
 - FVG boxes mark a three-candle price imbalance; body-gap markers identify non-overlapping real bodies.
 - These are chart observations for learning, not validated predictions or instructions. Test on historical charts and understand that pivot markers appear only after the right-side confirmation bars.
+
+## Alternative public data sources to test
+
+NSE access from a hosted runner can fail even when the report is available in a normal browser. These public pages are candidate cross-checks, not yet verified automated feeds:
+
+- **FNOScan FII/DII data:** https://www.fnoscan.com/fii-dii-data — displays cash-market FII/DII activity and participant-wise derivatives OI. Its published methodology says the underlying datasets come from NSE and BSE. Automated collection, export availability, terms, and schema still need verification before using it in this project.
+- **Moneycontrol OI participants:** https://www.moneycontrol.com/markets/fii-dii-data/oi-participants/ — public display of participant categories. Use as a comparison source unless an approved export or documented access method is confirmed.
+- **NSDL latest FPI report:** https://www.fpi.nsdl.co.in/web/Reports/Latest.aspx — cross-check for FPI investment data; it does not replace DII cash figures or the full participant-wise derivatives OI report.
+- **CDSL FII/FPI reports:** https://www.cdslindia.com/Publications/FIIDailyData.aspx — another depository source for FPI investment data.
+
+### Fallback policy
+
+1. Keep the original source URL, retrieval timestamp, report date, and dataset label with every imported record.
+2. Do not combine cash-market FII/DII values with derivatives participant OI; they measure different things.
+3. Do not silently substitute a third-party snapshot for an official report. Mark its source and provisional status, and compare values/dates before accepting it.
+4. Do not scrape undocumented endpoints or bypass access controls. Prefer a public CSV export, documented API, or permitted public page. The alternative pages above are candidates only until an automated test confirms retrieval and schema validation.
+5. A green workflow means data is usable only if source, date, schema, and row checks pass.
