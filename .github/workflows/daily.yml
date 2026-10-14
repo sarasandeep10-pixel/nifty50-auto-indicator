@@ -28,7 +28,7 @@ jobs:
           python-version: "3.11"
 
       - name: Compile scripts and tests
-        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py collector/fetch_official_reports.py collector/collect_fii_dii.py collector/validate_collection_status.py collector/download_nse_reports_browser.py tests/test_parser.py tests/test_collector.py tests/test_fii_dii.py tests/test_collection_status.py
+        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py collector/fetch_official_reports.py collector/collect_fii_dii.py collector/validate_collection_status.py collector/download_nse_reports_browser.py collector/fetch_upstox_institutional_data.py tests/test_parser.py tests/test_collector.py tests/test_fii_dii.py tests/test_collection_status.py tests/test_upstox_collector.py
 
       - name: Run regression tests
         run: python -m unittest discover -s tests -v
@@ -44,6 +44,12 @@ jobs:
 
       - name: Attempt direct-link participant report collection
         run: python collector/fetch_official_reports.py
+
+      - name: Fetch institutional activity from documented Upstox API (optional)
+        if: ${{ vars.ENABLE_UPSTOX_API == 'true' }}
+        env:
+          UPSTOX_ACCESS_TOKEN: ${{ secrets.UPSTOX_ACCESS_TOKEN }}
+        run: python collector/fetch_upstox_institutional_data.py
 
       - name: Install browser automation for public report controls
         run: |
