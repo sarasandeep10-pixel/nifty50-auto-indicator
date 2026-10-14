@@ -10,7 +10,7 @@ class CollectionStatusTest(unittest.TestCase):
             root = Path(tmp)
             issues = inspect(root / "processed", root / "official")
             self.assertTrue(any("FII/DII" in issue for issue in issues))
-            self.assertTrue(any("participant-wise OI" in issue for issue in issues))
+            self.assertTrue(any("Official collection status is missing" in issue for issue in issues))
 
     def test_valid_fii_rows_still_require_participant_schema_validation(self):
         with tempfile.TemporaryDirectory() as tmp:
