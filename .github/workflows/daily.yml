@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  validate-and-check-sources:
+  validate-and-collect:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -28,7 +28,7 @@ jobs:
           python-version: "3.11"
 
       - name: Compile scripts and tests
-        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py tests/test_parser.py
+        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py collector/fetch_official_reports.py tests/test_parser.py
 
       - name: Run parser regression tests
         run: python -m unittest discover -s tests -v
@@ -39,11 +39,14 @@ jobs:
       - name: Check official NSE source availability
         run: python collector/check_official_sources.py
 
-      - name: Upload source status report
+      - name: Download directly linked public NSE CSV reports
+        run: python collector/fetch_official_reports.py
+
+      - name: Upload source and collection reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: official-nse-source-status
-          path: data/processed/official_source_status.json
+          name: official-nse-data-status
+          path: data/official/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 30
