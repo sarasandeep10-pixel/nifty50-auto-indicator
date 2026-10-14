@@ -70,22 +70,35 @@ def parse_page(html):
     parsed = []
     rejected = []
     for ti, table in enumerate(parser.tables):
-        for row in table:
-            joined = " ".join(row).lower()
-            if not any(k in joined for k in ("fii/fpi", "fii", "dii")):
+        header_index = None
+        for ri, row in enumerate(table):
+            h = " ".join(row).lower()
+            if ("category" in h and "date" in h and "buy" in h and "sell" in h and "net" in h):
+                header_index = ri
+                break
+        if header_index is None:
+            continue
+        header = [re.sub(r"[^a-z]+", "", x.lower()) for x in table[header_index]]
+        def col_index(*terms):
+            for i, value in enumerate(header):
+                if all(term in value for term in terms):
+                    return i
+            return None
+        category_i = col_index("category")
+        date_i = col_index("date")
+        buy_i = next((i for i, x in enumerate(header) if "buy" in x and "value" in x), None)
+        sell_i = next((i for i, x in enumerate(header) if "sell" in x and "value" in x), None)
+        net_i = next((i for i, x in enumerate(header) if "net" in x and "value" in x), None)
+        if None in (category_i, date_i, buy_i, sell_i, net_i):
+            rejected.append({"table": ti, "reason": "required_headers_not_mapped", "headers": table[header_index]})
+            continue
+        for row in table[header_index + 1:]:
+            if max(category_i, date_i, buy_i, sell_i, net_i) >= len(row):
                 continue
-            if not any(k in joined for k in ("buy value", "net value", "sell value")):
-                continue
-            # Rows in this table can include headers; data rows should have a category,
-            # a date, and three numeric values.
-            if len(row) < 5:
-                rejected.append({"table": ti, "row": row, "reason": "too_few_columns"})
-                continue
-            category = row[0].upper()
+            category = row[category_i].upper()
             if "FII" not in category and "DII" not in category:
                 continue
-            date_text = row[1]
-            nums = [number(x) for x in row[2:5]]
+            nums = [number(row[i]) for i in (buy_i, sell_i, net_i)]
             if not all(v is not None for v in nums):
                 rejected.append({"table": ti, "row": row, "reason": "non_numeric_values"})
                 continue
@@ -93,7 +106,7 @@ def parse_page(html):
             calculated = round(buy - sell, 2)
             parsed.append({
                 "category": "FII/FPI" if "FII" in category else "DII",
-                "date": date_text,
+                "date": row[date_i],
                 "buy_crore": buy,
                 "sell_crore": sell,
                 "net_crore_reported": net,
@@ -101,7 +114,6 @@ def parse_page(html):
                 "net_matches_buy_minus_sell": abs(net - calculated) <= 0.02,
                 "source_table_index": ti,
             })
-    # Remove duplicate rows from duplicated layout tables, preserving the first occurrence.
     unique = {}
     for row in parsed:
         key = (row["category"], row["date"], row["buy_crore"], row["sell_crore"], row["net_crore_reported"])
