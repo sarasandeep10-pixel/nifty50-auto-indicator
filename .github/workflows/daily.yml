@@ -1,4 +1,4 @@
-name: Daily Nifty Data Workflow
+name: Daily NSE Data Status Check
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  validate-and-check-sources:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -27,11 +27,23 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Compile parser and tests
-        run: python -m py_compile collector/parse_nse_reports.py tests/test_parser.py
+      - name: Compile scripts and tests
+        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py tests/test_parser.py
 
       - name: Run parser regression tests
         run: python -m unittest discover -s tests -v
 
       - name: Verify parser CLI
         run: python collector/parse_nse_reports.py --help
+
+      - name: Check official NSE source availability
+        run: python collector/check_official_sources.py
+
+      - name: Upload source status report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-nse-source-status
+          path: data/processed/official_source_status.json
+          if-no-files-found: warn
+          retention-days: 14
