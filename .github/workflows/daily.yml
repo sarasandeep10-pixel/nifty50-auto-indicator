@@ -28,7 +28,7 @@ jobs:
           python-version: "3.11"
 
       - name: Compile scripts and tests
-        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py collector/fetch_official_reports.py collector/collect_fii_dii.py tests/test_parser.py tests/test_collector.py tests/test_fii_dii.py
+        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py collector/fetch_official_reports.py collector/collect_fii_dii.py collector/validate_collection_status.py tests/test_parser.py tests/test_collector.py tests/test_fii_dii.py tests/test_collection_status.py
 
       - name: Run regression tests
         run: python -m unittest discover -s tests -v
@@ -44,6 +44,9 @@ jobs:
 
       - name: Attempt direct-link participant report collection
         run: python collector/fetch_official_reports.py
+
+      - name: Validate collection completeness
+        run: python collector/validate_collection_status.py
 
       - name: Upload collected data and status reports
         if: always()
