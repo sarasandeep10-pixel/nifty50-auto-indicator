@@ -4,6 +4,7 @@
 - `collector/check_official_sources.py`: checks whether official NSE report pages respond.
 - `collector/fetch_official_reports.py`: searches the official pages' public HTML for direct CSV links and downloads a matching file only when a direct link is available. It does not guess hidden endpoints or bypass access controls.
 - `collector/parse_nse_reports.py`: validates and normalizes a participant-wise OI CSV supplied by the user and writes a dated JSON file.
+- `collector/fetch_upstox_institutional_data.py`: optional adapter for Upstox's documented FII/DII Market Information API. It requires the `UPSTOX_ACCESS_TOKEN` GitHub secret and writes a separate normalized JSON file.
 - `.github/workflows/daily.yml`: runs tests and the collection attempt on weekdays at 18:00 IST, then uploads a status artifact.
 - `nifty_direction_v6.pine`: educational chart-context overlay with EMA/VWAP, previous-day levels, internal/external swing markers, swing-level sweep observations, 3-candle FVG zones, candle-body gaps, MACD context, and higher-timeframe context. It does not issue buy/sell alerts or fetch external NSE data.
 
@@ -17,6 +18,10 @@
 4. The workflow uploads the source and collection status as an artifact. It does not commit raw reports into the repository.
 5. TradingView Pine Script cannot fetch arbitrary URLs or read local files. This repository does not claim a live NSE-to-TradingView feed.
 6. This project is for neutral market-data learning and historical review. It does not produce predictions or trading instructions. Participant positioning alone does not determine future market movement.
+
+## Optional Upstox API source
+
+The Upstox adapter uses the documented `/v2/market/fii` and `/v2/market/dii` endpoints. To enable it in GitHub Actions, add a repository Actions secret named `UPSTOX_ACCESS_TOKEN` and a repository Actions variable named `ENABLE_UPSTOX_API` with value `true`. Do not paste access tokens into chat or commit them to the repository. The API returns FII activity by market segment and DII cash activity; it does **not** provide the full participant-wise Client/Pro/FII/DII OI table. Output is stored separately as `data/processed/upstox_institutional_activity.json`. The adapter has not been authenticated or live-tested from this environment because no access token is available.
 
 ## Run the parser locally
 Use Python 3.11+. For a manually downloaded official participant-wise OI CSV:
