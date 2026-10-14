@@ -45,7 +45,8 @@ jobs:
       - name: Attempt direct-link participant report collection
         run: python collector/fetch_official_reports.py
 
-      - name: Validate collection completeness
+      - name: Validate collection completeness (report warnings without hiding artifacts)
+        continue-on-error: true
         run: python collector/validate_collection_status.py
 
       - name: Upload collected data and status reports
