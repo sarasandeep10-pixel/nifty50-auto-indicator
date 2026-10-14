@@ -66,6 +66,8 @@ class TableParser(HTMLParser):
 
 def parse_page(html):
     parser = TableParser()
+    if isinstance(html, bytes):
+        html = html.decode("utf-8", errors="replace")
     parser.feed(html)
     parsed = []
     rejected = []
