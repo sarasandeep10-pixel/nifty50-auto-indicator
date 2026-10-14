@@ -1,57 +1,104 @@
 //@version=6
-indicator("Nifty Direction Dashboard — Technical Core", overlay=true, max_labels_count=100)
+indicator("Nifty Market Structure Context — Educational", overlay=true, max_labels_count=150, max_boxes_count=80)
 
-// Chart-derived technical signals only. External NSE participant data is not available
-// to Pine automatically unless delivered through a supported TradingView data feed.
+// Educational chart context only. This script does not issue buy/sell instructions
+// or connect to NSE participant reports. External data requires a supported feed.
 emaLen = input.int(9, "EMA length", minval=1)
-fastLen = input.int(12, "MACD fast", minval=1)
-slowLen = input.int(26, "MACD slow", minval=2)
-signalLen = input.int(9, "MACD signal", minval=1)
-showLevels = input.bool(true, "Show previous-day high/low")
-showDashboard = input.bool(true, "Show dashboard")
+showVWAP = input.bool(true, "Show VWAP")
+showPrevDay = input.bool(true, "Show previous-day high/low")
+showInternal = input.bool(true, "Show internal swings (3-bar)")
+showExternal = input.bool(true, "Show external swings (5-bar)")
+showSweeps = input.bool(true, "Mark prior swing-level sweeps")
+showFVG = input.bool(true, "Show 3-candle fair value gaps")
+showBodyGaps = input.bool(true, "Show candle-body gaps")
+showHTF = input.bool(true, "Show higher-timeframe context")
+showDashboard = input.bool(true, "Show information panel")
+htf = input.timeframe("15", "Higher timeframe")
+maxZones = input.int(20, "Maximum active gap zones", minval=1, maxval=40)
 
 ema9 = ta.ema(close, emaLen)
 vwapValue = ta.vwap(hlc3)
-[macdLine, signalLine, hist] = ta.macd(close, fastLen, slowLen, signalLen)
+[macdLine, macdSignal, macdHist] = ta.macd(close, 12, 26, 9)
 prevHigh = request.security(syminfo.tickerid, "D", high[1], barmerge.gaps_off, barmerge.lookahead_off)
-prevLow  = request.security(syminfo.tickerid, "D", low[1], barmerge.gaps_off, barmerge.lookahead_off)
+prevLow = request.security(syminfo.tickerid, "D", low[1], barmerge.gaps_off, barmerge.lookahead_off)
+htfClose = request.security(syminfo.tickerid, htf, close, barmerge.gaps_off, barmerge.lookahead_off)
+htfEma = request.security(syminfo.tickerid, htf, ta.ema(close, 9), barmerge.gaps_off, barmerge.lookahead_off)
 
-trendBull = close > ema9 and close > vwapValue
-trendBear = close < ema9 and close < vwapValue
-momentumBull = macdLine > signalLine and hist > hist[1]
-momentumBear = macdLine < signalLine and hist < hist[1]
-structureBull = close > prevHigh
-structureBear = close < prevLow
+// 3-bar internal pivots and 5-bar external pivots are confirmed after right-side bars.
+internalHigh = ta.pivothigh(high, 1, 1)
+internalLow = ta.pivotlow(low, 1, 1)
+externalHigh = ta.pivothigh(high, 2, 2)
+externalLow = ta.pivotlow(low, 2, 2)
 
-// Transparent 0–100 directional score, not a probability of success.
-bullScore = (trendBull ? 40 : 0) + (momentumBull ? 35 : 0) + (structureBull ? 25 : 0)
-bearScore = (trendBear ? 40 : 0) + (momentumBear ? 35 : 0) + (structureBear ? 25 : 0)
+var float lastInternalHigh = na
+var float lastInternalLow = na
+var float lastExternalHigh = na
+var float lastExternalLow = na
 
-bias = bullScore >= 70 and bullScore > bearScore ? 1 : bearScore >= 70 and bearScore > bullScore ? -1 : 0
-biasText = bias == 1 ? "BULLISH TECHNICAL BIAS" : bias == -1 ? "BEARISH TECHNICAL BIAS" : "NEUTRAL / MIXED"
+if not na(internalHigh)
+    lastInternalHigh := internalHigh
+if not na(internalLow)
+    lastInternalLow := internalLow
+if not na(externalHigh)
+    lastExternalHigh := externalHigh
+if not na(externalLow)
+    lastExternalLow := externalLow
+
+// A sweep marker means price traded beyond a previously confirmed pivot and closed back inside.
+// It is a chart observation, not a trade trigger.
+sweepHigh = showSweeps and not na(lastInternalHigh) and high > lastInternalHigh and close < lastInternalHigh
+sweepLow = showSweeps and not na(lastInternalLow) and low < lastInternalLow and close > lastInternalLow
+
+// Three-candle imbalance zones.
+bullFVG = showFVG and bar_index >= 2 and low > high[2]
+bearFVG = showFVG and bar_index >= 2 and high < low[2]
+
+// Body gap: current real body is fully separated from the prior real body.
+prevBodyTop = math.max(open[1], close[1])
+prevBodyBottom = math.min(open[1], close[1])
+curBodyTop = math.max(open, close)
+curBodyBottom = math.min(open, close)
+bullBodyGap = showBodyGaps and bar_index >= 1 and curBodyBottom > prevBodyTop
+bearBodyGap = showBodyGaps and bar_index >= 1 and curBodyTop < prevBodyBottom
+
+var box[] gapBoxes = array.new_box()
+if bullFVG
+    b = box.new(bar_index - 2, low, bar_index, high[2], extend=extend.right, bgcolor=color.new(color.teal, 87), border_color=color.new(color.teal, 45), text="Bullish FVG", text_color=color.teal, text_size=size.tiny)
+    array.push(gapBoxes, b)
+if bearFVG
+    b = box.new(bar_index - 2, low[2], bar_index, high, extend=extend.right, bgcolor=color.new(color.orange, 87), border_color=color.new(color.orange, 45), text="Bearish FVG", text_color=color.orange, text_size=size.tiny)
+    array.push(gapBoxes, b)
+while array.size(gapBoxes) > maxZones
+    oldBox = array.shift(gapBoxes)
+    box.delete(oldBox)
 
 plot(ema9, "EMA 9", color=color.orange, linewidth=2)
-plot(vwapValue, "VWAP", color=color.aqua, linewidth=2)
-plot(showLevels ? prevHigh : na, "Previous day high", color=color.new(color.green, 25), style=plot.style_linebr)
-plot(showLevels ? prevLow : na, "Previous day low", color=color.new(color.red, 25), style=plot.style_linebr)
+plot(showVWAP ? vwapValue : na, "VWAP", color=color.aqua, linewidth=2)
+plot(showPrevDay ? prevHigh : na, "Previous-day high", color=color.new(color.green, 20), style=plot.style_linebr)
+plot(showPrevDay ? prevLow : na, "Previous-day low", color=color.new(color.red, 20), style=plot.style_linebr)
 
-bullSignal = bias == 1 and bias[1] != 1
-bearSignal = bias == -1 and bias[1] != -1
-plotshape(bullSignal, title="Bullish bias confirmed", style=shape.labelup, text="BULL BIAS", location=location.belowbar, color=color.green, textcolor=color.white, size=size.tiny)
-plotshape(bearSignal, title="Bearish bias confirmed", style=shape.labeldown, text="BEAR BIAS", location=location.abovebar, color=color.red, textcolor=color.white, size=size.tiny)
+plotshape(showInternal and not na(internalHigh), title="Internal swing high", style=shape.circle, location=location.abovebar, offset=-1, color=color.new(color.yellow, 0), size=size.tiny, text="iH", textcolor=color.black)
+plotshape(showInternal and not na(internalLow), title="Internal swing low", style=shape.circle, location=location.belowbar, offset=-1, color=color.new(color.yellow, 0), size=size.tiny, text="iL", textcolor=color.black)
+plotshape(showExternal and not na(externalHigh), title="External swing high", style=shape.diamond, location=location.abovebar, offset=-2, color=color.new(color.fuchsia, 0), size=size.tiny, text="EH", textcolor=color.white)
+plotshape(showExternal and not na(externalLow), title="External swing low", style=shape.diamond, location=location.belowbar, offset=-2, color=color.new(color.blue, 0), size=size.tiny, text="EL", textcolor=color.white)
+plotshape(sweepHigh, title="High sweep observation", style=shape.labeldown, location=location.abovebar, color=color.new(color.orange, 10), text="High sweep", textcolor=color.white, size=size.tiny)
+plotshape(sweepLow, title="Low sweep observation", style=shape.labelup, location=location.belowbar, color=color.new(color.teal, 10), text="Low sweep", textcolor=color.white, size=size.tiny)
+plotshape(bullBodyGap, title="Bullish candle-body gap", style=shape.square, location=location.belowbar, color=color.new(color.teal, 0), size=size.tiny, text="BG")
+plotshape(bearBodyGap, title="Bearish candle-body gap", style=shape.square, location=location.abovebar, color=color.new(color.orange, 0), size=size.tiny, text="BG")
 
-alertcondition(bullSignal, "Bullish technical bias", "Nifty technical conditions now show a bullish bias. Confirm with independent data.")
-alertcondition(bearSignal, "Bearish technical bias", "Nifty technical conditions now show a bearish bias. Confirm with independent data.")
-
-var table dash = table.new(position.top_right, 2, 5, border_width=1)
+htfText = not showHTF ? "Off" : htfClose > htfEma ? "Close above HTF EMA 9" : htfClose < htfEma ? "Close below HTF EMA 9" : "At HTF EMA 9"
+macdText = macdHist > 0 ? "Histogram positive" : macdHist < 0 ? "Histogram negative" : "Histogram at zero"
+var table dash = table.new(position.top_right, 2, 6, border_width=1)
 if barstate.islast and showDashboard
-    table.cell(dash, 0, 0, "NIFTY DIRECTION", text_color=color.white, bgcolor=color.gray)
-    table.cell(dash, 1, 0, biasText, text_color=color.white, bgcolor=bias == 1 ? color.green : bias == -1 ? color.red : color.gray)
-    table.cell(dash, 0, 1, "Bull score")
-    table.cell(dash, 1, 1, str.tostring(bullScore) + "/100")
-    table.cell(dash, 0, 2, "Bear score")
-    table.cell(dash, 1, 2, str.tostring(bearScore) + "/100")
-    table.cell(dash, 0, 3, "MACD histogram")
-    table.cell(dash, 1, 3, str.tostring(hist, format.mintick))
-    table.cell(dash, 0, 4, "Data scope")
-    table.cell(dash, 1, 4, "Chart only; no NSE feed", text_color=color.orange)
+    table.cell(dash, 0, 0, "MARKET CONTEXT", bgcolor=color.gray, text_color=color.white)
+    table.cell(dash, 1, 0, "Observations only", bgcolor=color.gray, text_color=color.white)
+    table.cell(dash, 0, 1, "MACD histogram")
+    table.cell(dash, 1, 1, str.tostring(macdHist, format.mintick))
+    table.cell(dash, 0, 2, "Momentum context")
+    table.cell(dash, 1, 2, macdText)
+    table.cell(dash, 0, 3, "Higher timeframe")
+    table.cell(dash, 1, 3, htfText)
+    table.cell(dash, 0, 4, "Previous-day levels")
+    table.cell(dash, 1, 4, showPrevDay ? "Shown" : "Hidden")
+    table.cell(dash, 0, 5, "External NSE data")
+    table.cell(dash, 1, 5, "Not connected", text_color=color.orange)
