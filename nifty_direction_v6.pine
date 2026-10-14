@@ -1,0 +1,57 @@
+//@version=6
+indicator("Nifty Direction Dashboard — Technical Core", overlay=true, max_labels_count=100)
+
+// Chart-derived technical signals only. External NSE participant data is not available
+// to Pine automatically unless delivered through a supported TradingView data feed.
+emaLen = input.int(9, "EMA length", minval=1)
+fastLen = input.int(12, "MACD fast", minval=1)
+slowLen = input.int(26, "MACD slow", minval=2)
+signalLen = input.int(9, "MACD signal", minval=1)
+showLevels = input.bool(true, "Show previous-day high/low")
+showDashboard = input.bool(true, "Show dashboard")
+
+ema9 = ta.ema(close, emaLen)
+vwapValue = ta.vwap(hlc3)
+[macdLine, signalLine, hist] = ta.macd(close, fastLen, slowLen, signalLen)
+prevHigh = request.security(syminfo.tickerid, "D", high[1], barmerge.gaps_off, barmerge.lookahead_off)
+prevLow  = request.security(syminfo.tickerid, "D", low[1], barmerge.gaps_off, barmerge.lookahead_off)
+
+trendBull = close > ema9 and close > vwapValue
+trendBear = close < ema9 and close < vwapValue
+momentumBull = macdLine > signalLine and hist > hist[1]
+momentumBear = macdLine < signalLine and hist < hist[1]
+structureBull = close > prevHigh
+structureBear = close < prevLow
+
+// Transparent 0–100 directional score, not a probability of success.
+bullScore = (trendBull ? 40 : 0) + (momentumBull ? 35 : 0) + (structureBull ? 25 : 0)
+bearScore = (trendBear ? 40 : 0) + (momentumBear ? 35 : 0) + (structureBear ? 25 : 0)
+
+bias = bullScore >= 70 and bullScore > bearScore ? 1 : bearScore >= 70 and bearScore > bullScore ? -1 : 0
+biasText = bias == 1 ? "BULLISH TECHNICAL BIAS" : bias == -1 ? "BEARISH TECHNICAL BIAS" : "NEUTRAL / MIXED"
+
+plot(ema9, "EMA 9", color=color.orange, linewidth=2)
+plot(vwapValue, "VWAP", color=color.aqua, linewidth=2)
+plot(showLevels ? prevHigh : na, "Previous day high", color=color.new(color.green, 25), style=plot.style_linebr)
+plot(showLevels ? prevLow : na, "Previous day low", color=color.new(color.red, 25), style=plot.style_linebr)
+
+bullSignal = bias == 1 and bias[1] != 1
+bearSignal = bias == -1 and bias[1] != -1
+plotshape(bullSignal, title="Bullish bias confirmed", style=shape.labelup, text="BULL BIAS", location=location.belowbar, color=color.green, textcolor=color.white, size=size.tiny)
+plotshape(bearSignal, title="Bearish bias confirmed", style=shape.labeldown, text="BEAR BIAS", location=location.abovebar, color=color.red, textcolor=color.white, size=size.tiny)
+
+alertcondition(bullSignal, "Bullish technical bias", "Nifty technical conditions now show a bullish bias. Confirm with independent data.")
+alertcondition(bearSignal, "Bearish technical bias", "Nifty technical conditions now show a bearish bias. Confirm with independent data.")
+
+var table dash = table.new(position.top_right, 2, 5, border_width=1)
+if barstate.islast and showDashboard
+    table.cell(dash, 0, 0, "NIFTY DIRECTION", text_color=color.white, bgcolor=color.gray)
+    table.cell(dash, 1, 0, biasText, text_color=color.white, bgcolor=bias == 1 ? color.green : bias == -1 ? color.red : color.gray)
+    table.cell(dash, 0, 1, "Bull score")
+    table.cell(dash, 1, 1, str.tostring(bullScore) + "/100")
+    table.cell(dash, 0, 2, "Bear score")
+    table.cell(dash, 1, 2, str.tostring(bearScore) + "/100")
+    table.cell(dash, 0, 3, "MACD histogram")
+    table.cell(dash, 1, 3, str.tostring(hist, format.mintick))
+    table.cell(dash, 0, 4, "Data scope")
+    table.cell(dash, 1, 4, "Chart only; no NSE feed", text_color=color.orange)

@@ -1,0 +1,32 @@
+name: Validate NSE participant report
+on:
+  workflow_dispatch:
+  schedule:
+    # Runs at 14:00 UTC on weekdays (19:30 IST). Actual report availability varies.
+    - cron: '0 14 * * 1-5'
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Find newest supplied participant CSV
+        id: input
+        shell: bash
+        run: |
+          file=$(find data/inbox -maxdepth 1 -type f -iname '*.csv' | sort | tail -n 1)
+          if [ -z "$file" ]; then echo 'No official NSE CSV found in data/inbox. Automatic NSE download is intentionally not configured until a stable official download route and schema are verified.'; exit 0; fi
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+      - name: Parse and validate columns
+        if: steps.input.outputs.file != ''
+        run: python collector/parse_nse_reports.py --input "${{ steps.input.outputs.file }}" --output data/processed
+      - name: Upload processed JSON
+        if: steps.input.outputs.file != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: participant-oi-summary
+          path: data/processed/*.json
