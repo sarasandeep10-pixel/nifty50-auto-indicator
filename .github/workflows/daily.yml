@@ -1,0 +1,25 @@
+
+name: Daily Nifty Data Workflow
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 12 * * 1-5"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run parser help check
+        run: python collector/parse_nse_reports.py --help
