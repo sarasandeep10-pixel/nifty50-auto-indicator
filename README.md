@@ -1,27 +1,33 @@
-# Nifty 50 Direction System — starter kit
+# Nifty 50 Market Data Learning Dashboard — starter kit
 
-## What is included
-- `tradingview/nifty_direction_v6.pine`: Pine Script v6 chart-only trend dashboard with EMA, VWAP, MACD, prior-day levels, a transparent score, and alerts.
-- `collector/parse_nse_reports.py`: validates and normalizes an NSE participant-wise OI CSV that is placed in `data/inbox/` and writes a dated JSON summary.
-- `.github/workflows/daily.yml`: scheduled GitHub Actions scaffold to run the parser and preserve output artifacts.
+## What currently works
+- `collector/parse_nse_reports.py` validates and normalizes a participant-wise open-interest CSV supplied by the user and writes a dated JSON file.
+- `collector/check_official_sources.py` checks whether the 2 official NSE report pages respond and writes `data/processed/official_source_status.json`.
+- `.github/workflows/daily.yml` runs parser tests and the source-page check on weekdays at 18:00 IST, and uploads the source-status JSON as a GitHub Actions artifact.
+- `tradingview/nifty_direction_v6.pine` is a chart-only technical dashboard. It does not fetch NSE participant data.
 
-## Important limitations
-1. This is a starter kit, not a deployed service. No GitHub repository, credentials, or hosting have been configured.
-2. The parser deliberately does not scrape undocumented NSE endpoints. NSE may change access controls, file naming, and report schemas; use official reports and validate every file.
-3. TradingView Pine Script cannot fetch arbitrary URLs or read local files. `request.seed()` is the Pine Seeds route for custom EOD series, but TradingView's current documentation says creation of new Pine Seeds repositories is suspended. Therefore this kit does NOT claim a fully automatic NSE-to-Pine feed. A compatible existing Pine Seeds feed or a supported custom market-data provider is needed for external metrics to appear inside Pine.
-4. The Pine indicator calculates chart-derived technical signals only. External FII/DII/Client/PRO figures are not secretly inferred from price.
-5. Treat scores as research aids, not predictions or trading instructions. Test on historical data before use.
+## Important limits
+1. **This is not yet a complete automatic NSE data feed.** The scheduled job checks the official pages' availability; it does not download the actual FII/DII or participant-wise OI CSVs, and it does not generate a market outlook.
+2. A reachable web page does not prove that its latest report was downloaded, is current, or passed schema validation. Check the artifact's `data_downloaded` and `data_validated` fields; they remain false for the source-status check.
+3. Official sources:
+   - NSE derivatives daily reports: https://www.nseindia.com/all-reports-derivatives
+   - NSE FII/FPI and DII activity: https://www.nseindia.com/reports/fii-dii
+   NSE describes its cash-market FII/FPI figures as provisional and subject to change.
+4. NSE may change report delivery methods, access controls, file names, and schemas. This implementation does not scrape undocumented endpoints or bypass access controls.
+5. TradingView Pine Script cannot fetch arbitrary URLs or read local files. This repository does not claim an automatic NSE-to-TradingView feed.
+6. The project is for neutral market-data learning and historical review, not predictions or trading instructions. Participant positioning alone does not determine what the market will do.
 
-## Run parser locally
-Use Python 3.11+ and install `pandas` if desired; the script itself uses only the standard library.
-
-Place the official NSE participant-wise OI CSV in `data/inbox/`, then run:
+## Run the CSV parser locally
+Use Python 3.11+. Place an official participant-wise OI CSV in a local folder and run:
 
 ```bash
 python collector/parse_nse_reports.py --input data/inbox/your_participant_oi.csv --output data/processed
 ```
 
-The parser tries to recognize common column names and fails closed if required fields cannot be identified. Inspect the JSON and adjust mappings only after checking the report headers.
+The parser fails closed when it cannot safely identify the required columns. Inspect the report date, headers, units, and participant labels before relying on the output.
 
-## Next integration milestone
-First validate the parser on a current official NSE CSV. Then choose a TradingView-compatible custom feed. Do not use `request.seed()` for a brand-new repository unless TradingView restores new-repository creation or confirms an alternative path.
+## View the scheduled source check
+Open the repository's **Actions** tab, select **Daily NSE Data Status Check**, open a successful run, and download the `official-nse-source-status` artifact. If NSE blocks GitHub Actions or is temporarily unavailable, the report records the failure rather than guessing.
+
+## Next engineering milestone
+Implement and test a supported download path for the actual official report files, with date checks, file integrity checks, schema validation, and a historical archive. Only then can the project truthfully claim automated report collection.
