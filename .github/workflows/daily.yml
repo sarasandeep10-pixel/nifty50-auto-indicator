@@ -28,9 +28,9 @@ jobs:
           python-version: "3.11"
 
       - name: Compile scripts and tests
-        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py collector/fetch_official_reports.py tests/test_parser.py
+        run: python -m py_compile collector/parse_nse_reports.py collector/check_official_sources.py collector/fetch_official_reports.py collector/collect_fii_dii.py tests/test_parser.py tests/test_collector.py tests/test_fii_dii.py
 
-      - name: Run parser regression tests
+      - name: Run regression tests
         run: python -m unittest discover -s tests -v
 
       - name: Verify parser CLI
@@ -39,14 +39,26 @@ jobs:
       - name: Check official NSE source availability
         run: python collector/check_official_sources.py
 
-      - name: Download directly linked public NSE CSV reports
+      - name: Collect visible FII DII data from official page
+        run: python collector/collect_fii_dii.py
+
+      - name: Attempt direct-link participant report collection
         run: python collector/fetch_official_reports.py
 
-      - name: Upload source and collection reports
+      - name: Upload collected data and status reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: official-nse-data-status
+          path: data/processed/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Upload collector diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-nse-collection-diagnostics
           path: data/official/
           if-no-files-found: warn
           retention-days: 30
