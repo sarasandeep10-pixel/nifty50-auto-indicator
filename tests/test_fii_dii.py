@@ -16,6 +16,7 @@ class FiiDiiParserTest(unittest.TestCase):
 
     def test_rejects_arithmetic_mismatch(self):
         html = b"""<table>
+        <tr><th>Category</th><th>Date</th><th>Buy Value</th><th>Sell Value</th><th>Net Value</th></tr>
         <tr><td>FII/FPI</td><td>14-Oct-2026</td><td>800</td><td>1,050</td><td>-100</td></tr>
         </table>"""
         rows, _ = parse_page(html)
