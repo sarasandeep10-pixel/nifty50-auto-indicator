@@ -50,7 +50,12 @@ def main():
             except Exception as exc:
                 status["errors"].append("FII/DII CSV download: " + str(exc))
         except Exception as exc:
-            status["errors"].append("FII/DII page: " + str(exc))\n            try:\n                status["fii_dii_diagnostic_url"] = page.url\n                (OUT / "fii_dii_error.html").write_text(page.content(), encoding="utf-8")\n            except Exception:\n                pass
+            status["errors"].append("FII/DII page: " + str(exc))
+            try:
+                status["fii_dii_diagnostic_url"] = page.url
+                (OUT / "fii_dii_error.html").write_text(page.content(), encoding="utf-8")
+            except Exception:
+                pass
 
         try:
             page.goto("https://www.nseindia.com/all-reports-derivatives", wait_until="commit", timeout=60000)
@@ -87,7 +92,12 @@ def main():
                 "validated": False,
             })
         except Exception as exc:
-            status["errors"].append("Participant OI download: " + str(exc))\n            try:\n                status["derivatives_diagnostic_url"] = page.url\n                (OUT / "derivatives_error.html").write_text(page.content(), encoding="utf-8")\n            except Exception:\n                pass
+            status["errors"].append("Participant OI download: " + str(exc))
+            try:
+                status["derivatives_diagnostic_url"] = page.url
+                (OUT / "derivatives_error.html").write_text(page.content(), encoding="utf-8")
+            except Exception:
+                pass
         finally:
             browser.close()
 
