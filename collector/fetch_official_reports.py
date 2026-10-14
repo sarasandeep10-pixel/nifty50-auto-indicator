@@ -68,7 +68,10 @@ def find_csv_link(page_url, html, keywords):
     for href, label in parser.links:
         full = urllib.parse.urljoin(page_url, href)
         haystack = (label + " " + full).lower()
-        is_csv = ".csv" in urllib.parse.urlparse(full).path.lower() or "csv" in haystack
+        parsed = urllib.parse.urlparse(full)
+        # Only follow a visibly direct CSV URL. A label containing "CSV" is not enough:
+        # NSE download buttons may use JavaScript handlers or point back to the HTML page.
+        is_csv = ".csv" in parsed.path.lower() or ".csv" in parsed.query.lower()
         matches = sum(1 for word in keywords if word in haystack)
         if is_csv and matches:
             candidates.append((matches, full, label))
