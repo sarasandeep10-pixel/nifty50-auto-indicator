@@ -23,10 +23,10 @@ def main():
         "errors": [],
     }
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(accept_downloads=True)
+        browser = p.chromium.launch(headless=True, args=["--disable-http2"])
+        page = browser.new_page(accept_downloads=True, ignore_https_errors=False, user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36", extra_http_headers={"Accept-Language": "en-US,en;q=0.9"})
         try:
-            page.goto("https://www.nseindia.com/reports/fii-dii", wait_until="domcontentloaded", timeout=60000)
+            page.goto("https://www.nseindia.com/reports/fii-dii", wait_until="commit", timeout=60000)
             page.wait_for_timeout(3000)
             status["fii_dii_page_title"] = page.title()
             status["fii_dii_page_url"] = page.url
@@ -50,10 +50,10 @@ def main():
             except Exception as exc:
                 status["errors"].append("FII/DII CSV download: " + str(exc))
         except Exception as exc:
-            status["errors"].append("FII/DII page: " + str(exc))
+            status["errors"].append("FII/DII page: " + str(exc))\n            try:\n                status["fii_dii_diagnostic_url"] = page.url\n                (OUT / "fii_dii_error.html").write_text(page.content(), encoding="utf-8")\n            except Exception:\n                pass
 
         try:
-            page.goto("https://www.nseindia.com/all-reports-derivatives", wait_until="domcontentloaded", timeout=60000)
+            page.goto("https://www.nseindia.com/all-reports-derivatives", wait_until="commit", timeout=60000)
             page.wait_for_timeout(3000)
             status["derivatives_page_title"] = page.title()
             status["derivatives_page_url"] = page.url
@@ -87,7 +87,7 @@ def main():
                 "validated": False,
             })
         except Exception as exc:
-            status["errors"].append("Participant OI download: " + str(exc))
+            status["errors"].append("Participant OI download: " + str(exc))\n            try:\n                status["derivatives_diagnostic_url"] = page.url\n                (OUT / "derivatives_error.html").write_text(page.content(), encoding="utf-8")\n            except Exception:\n                pass
         finally:
             browser.close()
 
