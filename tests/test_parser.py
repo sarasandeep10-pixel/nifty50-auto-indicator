@@ -30,7 +30,7 @@ class ParserSmokeTest(unittest.TestCase):
             report = json.loads((output / "participant_oi_2026-10-14.json").read_text())
             self.assertEqual(report["participants"]["FII"]["net_long_minus_short"], -60)
             self.assertEqual(report["participants"]["DII"]["net_long_minus_short"], 50)
-            self.assertFalse(report["source_verified_official"])
+            self.assertFalse(report["validated"])
 
     def test_rejects_unknown_headers(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -42,7 +42,7 @@ class ParserSmokeTest(unittest.TestCase):
                 check=False, capture_output=True, text=True,
             )
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn("Could not identify required columns", result.stderr)
+            self.assertIn("Could not safely map required columns", result.stderr)
 
 
 if __name__ == "__main__":
