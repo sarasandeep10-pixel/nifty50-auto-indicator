@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/daily.yml"
       - "collector/**"
+      - "tests/**"
   schedule:
     # 18:00 IST, Monday to Friday. GitHub cron uses UTC.
     - cron: "30 12 * * 1-5"
@@ -26,8 +27,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Compile parser
-        run: python -m py_compile collector/parse_nse_reports.py
+      - name: Compile parser and tests
+        run: python -m py_compile collector/parse_nse_reports.py tests/test_parser.py
+
+      - name: Run parser regression tests
+        run: python -m unittest discover -s tests -v
 
       - name: Verify parser CLI
         run: python collector/parse_nse_reports.py --help
